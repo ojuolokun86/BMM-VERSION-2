@@ -1,0 +1,183 @@
+const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
+const { initAuthCreds, makeCacheableSignalKeyStore, BufferJSON } = require('@whiskeysockets/baileys');
+const { saveSessionToSupabase, loadAllSessionsFromSupabase } = require('./supabaseSession');
+
+const dbPath = path.join(__dirname, 'sessions.db');
+if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, '');
+
+const db = new Database(dbPath);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    auth_id TEXT NOT NULL,
+    phone_number TEXT NOT NULL,
+    creds TEXT NOT NULL,
+    keys TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (auth_id, phone_number)
+  )
+`);
+
+// Buffer-safe stringify
+function encodeKeys(keys) {
+  const encoded = {};
+  for (const category in keys) {
+    encoded[category] = {};
+    for (const id in keys[category]) {
+      encoded[category][id] = JSON.stringify(keys[category][id], BufferJSON.replacer);
+    }
+  }
+  return encoded;
+}
+
+// Buffer-safe parse
+function decodeKeys(encoded) {
+  const parsed = {};
+  for (const category in encoded) {
+    parsed[category] = {};
+    for (const id in encoded[category]) {
+      parsed[category][id] = JSON.parse(encoded[category][id], BufferJSON.reviver);
+    }
+  }
+  return parsed;
+}
+
+// Load session from DB
+function loadSession(authId, phoneNumber) {
+  const row = db.prepare(`
+    SELECT creds, keys FROM sessions
+    WHERE auth_id = ? AND phone_number = ?
+  `).get(authId, phoneNumber);
+
+  if (!row) return null;
+
+  return {
+    creds: JSON.parse(row.creds, BufferJSON.reviver),
+    keys: decodeKeys(JSON.parse(row.keys))
+  };
+}
+
+// Save session to DB
+function saveSession(authId, phoneNumber, creds, keys) {
+  db.prepare(`
+    INSERT INTO sessions (auth_id, phone_number, creds, keys)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(auth_id, phone_number)
+    DO UPDATE SET creds = excluded.creds, keys = excluded.keys, updated_at = CURRENT_TIMESTAMP
+  `).run(
+    authId,
+    phoneNumber,
+    JSON.stringify(creds, BufferJSON.replacer),
+    JSON.stringify(encodeKeys(keys))
+  );
+}
+
+// Main function used in Baileys
+async function useSQLiteAuthState(authId, phoneNumber) {
+  let session = loadSession(authId, phoneNumber);
+
+  if (!session) {
+    session = {
+      creds: initAuthCreds(),
+      keys: {}
+    };
+  }
+
+  const { creds, keys } = session;
+
+  const keyStore = makeCacheableSignalKeyStore({
+    get: async (type, ids) => {
+      const result = {};
+      for (const id of ids) {
+        if (keys[type] && keys[type][id]) {
+          result[id] = keys[type][id];
+        }
+      }
+      return result;
+    },
+    set: async (data) => {
+  for (const category in data) {
+    if (!keys[category]) keys[category] = {};
+    for (const id in data[category]) {
+      keys[category][id] = data[category][id];
+    }
+  }
+  saveSession(authId, phoneNumber, creds, keys);
+    }
+  });
+
+  return {
+    state: {
+      creds,
+      keys: keyStore
+    },
+    saveCreds: async () => {
+      saveSession(authId, phoneNumber, creds, keys);
+    }
+  };
+}
+
+// Delete session
+function deleteSession(authId, phoneNumber) {
+  db.prepare(`DELETE FROM sessions WHERE auth_id = ? AND phone_number = ?`).run(authId, phoneNumber);
+}
+
+function deleteAllSessions() {
+  db.prepare('DELETE FROM sessions').run();
+}
+async function syncSQLiteToSupabase() {
+  const rows = db.prepare('SELECT auth_id, phone_number, creds, keys FROM sessions').all();
+  let synced = 0, failed = 0;
+  for (const row of rows) {
+    try {
+      await saveSessionToSupabase(row.phone_number, {
+        creds: JSON.parse(row.creds, BufferJSON.reviver),
+        keys: decodeKeys(JSON.parse(row.keys)),
+        authId: row.auth_id
+      });
+      synced++;
+    } catch (err) {
+      console.error(`❌ Failed to sync session for ${row.phone_number}:`, err.message);
+      failed++;
+    }
+  }
+  console.log(`✅ Synced ${synced} sessions from SQLite to Supabase. Failed: ${failed}`);
+}
+
+async function restoreAllSessionsFromSupabase() {
+  // 1. Delete all local sessions
+  deleteAllSessions();
+  console.log('🗑️ Deleted all sessions from SQLite.');
+
+  // 2. Load all sessions from Supabase
+  const sessions = await loadAllSessionsFromSupabase();
+  if (!sessions || sessions.length === 0) {
+    console.log('⚠️ No sessions found in Supabase.');
+    return;
+  }
+  let restored = 0;
+  for (const session of sessions) {
+    try {
+      const creds = JSON.parse(session.creds, BufferJSON.reviver);
+      const rawKeys = JSON.parse(session.keys);
+      const keys = {};
+      for (const category in rawKeys) {
+        keys[category] = {};
+        for (const id in rawKeys[category]) {
+          keys[category][id] = JSON.parse(rawKeys[category][id], BufferJSON.reviver);
+        }
+      }
+      saveSession(session.authId, session.phoneNumber, creds, keys);
+      restored++;
+      console.log(`💾 Restored session for ${session.phoneNumber} to SQLite.`);
+      console.log('🔍 Loaded app-state-sync-key IDs:', Object.keys(keys['app-state-sync-key'] || {}));
+    } catch (err) {
+      console.error(`❌ Failed to restore session for ${session.phoneNumber}:`, err.message);
+    }
+  }
+  console.log(`✅ Restored ${restored} sessions from Supabase to SQLite.`);
+}
+
+module.exports = { useSQLiteAuthState, deleteSession, syncSQLiteToSupabase, deleteAllSessions, restoreAllSessionsFromSupabase };
