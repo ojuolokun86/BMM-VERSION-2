@@ -7,16 +7,29 @@ const STATUS_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Periodically clean expired IDs every hour
 setInterval(() => {
     const now = Date.now();
-    for (const [id, timestamp] of viewedStatusMap.entries()) {
-        if (now - timestamp > STATUS_EXPIRY_MS) {
-            viewedStatusMap.delete(id);
-            console.log(`🧹 Deleted expired status ID: ${id}`);
+    for (const [userId, map] of userStatusTrackers.entries()) {
+        for (const [id, timestamp] of map.entries()) {
+            if (now - timestamp > STATUS_EXPIRY_MS) {
+                map.delete(id);
+                console.log(`🧹 Deleted expired status ID: ${id} for user ${userId}`);
+            }
         }
     }
-}, 60 * 60 * 1000); // Every 1 hour
+}, 60 * 60 * 1000);
+
+const userStatusTrackers = new Map(); // userId => Map
+
+function getUserTracker(userId) {
+    if (!userStatusTrackers.has(userId)) {
+        userStatusTrackers.set(userId, new Map());
+    }
+    return userStatusTrackers.get(userId);
+}
+
 
 async function handleStatusUpdate(sock, msg, userId) {
     try {
+        const viewedStatusMap = getUserTracker(userId); // ✅ per-user tracker
         const key = msg?.key;
         const remoteJid = key?.remoteJid;
         const id = key?.id;
@@ -33,7 +46,7 @@ async function handleStatusUpdate(sock, msg, userId) {
         }
 
         if (viewedStatusMap.has(id)) {
-            //console.log('🔁 Already viewed status:', id);
+            console.log('🔁 Already viewed status:', id);
             return;
         }
 
@@ -43,7 +56,7 @@ async function handleStatusUpdate(sock, msg, userId) {
         }
 
         if (participant === botJid) {
-            //console.log('⏭️ Skipping self-status.');
+            console.log('⏭️ Skipping self-status.');
             return;
         }
 
