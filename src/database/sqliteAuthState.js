@@ -127,15 +127,27 @@ function deleteSession(authId, phoneNumber) {
 function deleteAllSessions() {
   db.prepare('DELETE FROM sessions').run();
 }
+
+async function syncUserSession(authId, phoneNumber) {
+  const session = loadSession(authId, phoneNumber);
+  if (!session) return;
+
+  await saveSessionToSupabase(authId, phoneNumber, {
+    creds: session.creds,
+    keys: session.keys,
+    authId
+  });
+  console.log(`✅ Synced session for ${phoneNumber} to Supabase. with keys ${Object.keys(session.keys).join(', ')}`);
+}
+
 async function syncSQLiteToSupabase() {
   const rows = db.prepare('SELECT auth_id, phone_number, creds, keys FROM sessions').all();
   let synced = 0, failed = 0;
   for (const row of rows) {
     try {
-      await saveSessionToSupabase(row.phone_number, {
+      await saveSessionToSupabase(row.auth_id, row.phone_number, {
         creds: JSON.parse(row.creds, BufferJSON.reviver),
-        keys: decodeKeys(JSON.parse(row.keys)),
-        authId: row.auth_id
+        keys: decodeKeys(JSON.parse(row.keys))
       });
       synced++;
     } catch (err) {
@@ -180,4 +192,4 @@ async function restoreAllSessionsFromSupabase() {
   console.log(`✅ Restored ${restored} sessions from Supabase to SQLite.`);
 }
 
-module.exports = { useSQLiteAuthState, deleteSession, syncSQLiteToSupabase, deleteAllSessions, restoreAllSessionsFromSupabase };
+module.exports = { useSQLiteAuthState, deleteSession, syncSQLiteToSupabase, deleteAllSessions, restoreAllSessionsFromSupabase, syncUserSession };

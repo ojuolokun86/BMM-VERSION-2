@@ -24,6 +24,11 @@ async function handleIncomingMessage({ sock, msg, phoneNumber }) {
   await handleStatusUpdate(sock, msg, botId); // Handle status updates
   if (await detectAndAct({ sock, from, msg, textMsg })) return;
    const presenceType = globalStore.globalPresenceType?.[botId] || 'available';
+   const duration = globalStore.globalDisappearingDuration || 0;
+  // if ((duration > 0 || duration === 0) && !globalStore.disappearingChats.has(from)) {
+  //   await sock.sendMessage(from, { disappearingMessagesInChat: duration });
+  //   globalStore.disappearingChats.add(from);
+  // }
   await sock.sendPresenceUpdate(presenceType, from);
   // ⚙️ Check for command
   const userPrefix = await getUserPrefix(botId);

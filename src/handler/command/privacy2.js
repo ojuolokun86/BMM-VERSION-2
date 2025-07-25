@@ -51,16 +51,18 @@ async function setBotPrivacyCommand(sock, msg) {
 
     switch (option) {
       case 0: // Set Bot Name
-        await sock.sendMessage(from, { text: '✏️ Send the new name:' }, { quoted: reply });
-        try {
-          const name = await waitForNextText(sock, from, sender);
-          await sock.updateProfileName(name);
-          await sendToChat(sock, from, { message: '✅ Bot name updated.' });
-        } catch (e) {
-          console.error('Error updating bot name:', e);
-          await sendToChat(sock, from, { message: `❌ Failed to update name:\n${e.message}` });
-        }
-        break;
+     const prompt = await sock.sendMessage(from, { text: '✏️ Send the new name:' }, { quoted: reply });
+      try {
+        const name = await waitForNextText(sock, from, sender, prompt.key.id);
+        console.log('Setting bot name to:', name);
+        if (!name) throw new Error('No name provided');
+        await sock.updateProfileName(name);
+        await sendToChat(sock, from, { message: `✅ Bot name updated to "${name}"` });
+      } catch (e) {
+        console.error('Error updating bot name:', e);
+        await sendToChat(sock, from, { message: `❌ Failed to update name:\n${e.message}` });
+      }
+      break;
 
       case 1: // Set Profile Picture
         await sock.sendMessage(from, { text: '🖼️ Send an image to set as profile picture:' }, { quoted: reply });
@@ -76,11 +78,12 @@ async function setBotPrivacyCommand(sock, msg) {
         break;
 
       case 2: // Set Bot Bio
-        await sock.sendMessage(from, { text: '📝 Send new bio/status text:' }, { quoted: reply });
+        const prompts = await sock.sendMessage(from, { text: '📝 Send new bio/status text:' }, { quoted: reply });
         try {
-          const bio = await waitForNextText(sock, from, sender);
+          const bio = await waitForNextText(sock, from, sender, prompts.key.id);
+          if (!bio) throw new Error('No bio provided');
           await sock.updateProfileStatus(bio);
-          await sendToChat(sock, from, { message: '✅ Bio updated.' });
+          await sendToChat(sock, from, { message: `✅ Bio updated to "${bio}"` });
         } catch (e) {
           await sendToChat(sock, from, { message: `❌ Failed to update bio:\n${e.message}` });
         }
@@ -126,23 +129,36 @@ async function setBotPrivacyCommand(sock, msg) {
 
 // === Helper Functions ===
 
-function waitForNextText(sock, jid, expectedSender) {
+const waitForNextText = (sock, jid, sender, excludeMessageId = null) => {
   return new Promise((resolve) => {
-    const listener = async ({ messages }) => {
+    const onMessage = async ({ messages }) => {
       const msg = messages?.[0];
       if (!msg) return;
-      const sender = msg.key.participant || msg.key.remoteJid;
-      if (msg.key.remoteJid !== jid || sender !== expectedSender) return;
 
-      const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
-      if (!text) return;
+      const participant = msg.key.participant || msg.key.remoteJid;
+      const messageId = msg.key.id;
+      const isFromSender = participant === sender;
+      const isText = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-      sock.ev.off('messages.upsert', listener);
-      resolve(text);
+      // Skip the message that was just sent as a prompt
+      if (excludeMessageId && messageId === excludeMessageId) return;
+
+      if (msg.key.remoteJid === jid && isFromSender && isText) {
+        sock.ev.off('messages.upsert', onMessage);
+        const text = msg.message.conversation || msg.message.extendedTextMessage.text;
+        resolve(text);
+      }
     };
-    sock.ev.on('messages.upsert', listener);
+
+    sock.ev.on('messages.upsert', onMessage);
+    setTimeout(() => {
+      sock.ev.off('messages.upsert', onMessage);
+      resolve(null); // Timeout after 60s
+    }, 60000);
   });
-}
+};
+
+
 
 function waitForImage(sock, jid, expectedSender) {
   return new Promise((resolve) => {
@@ -154,6 +170,7 @@ function waitForImage(sock, jid, expectedSender) {
       if (!msg.message?.imageMessage) return;
 
       sock.ev.off('messages.upsert', listener);
+      console.log('Image received from:', sender, msg.message.imageMessage);
       resolve(msg);
     };
     sock.ev.on('messages.upsert', listener);

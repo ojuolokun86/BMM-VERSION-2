@@ -26,8 +26,6 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
 
     // Use SQLite for session persistence
     const { state, saveCreds } = await useSQLiteAuthState(authId, phoneNumber);
-    // After session is loaded
-    console.log('🔍 app-state-sync-key:', Object.keys(state.keys['app-state-sync-key'] || {}));
 
     const { version } = await fetchLatestBaileysVersion();
 
@@ -84,11 +82,13 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 });
             console.log(`✅ User ${user_id} saved to database`);
             }
-            await saveSessionToSupabase(phoneNumber, {
-                creds: bmm.authState.creds,
-                keys: bmm.authState.keys,
-                authId
-            });
+
+            setTimeout(async () => {
+                const {  syncUserSession } = require('../database/sqliteAuthState');
+                await  syncUserSession(authId, phoneNumber);
+                console.log(`🔄 Synced all sessions from SQLite to Supabase after 5 seconds for ${phoneNumber}`);
+            }, 5000); // 5 seconds
+
         }
         if (update.connection === 'close') {
             const reason = update.lastDisconnect?.error;
@@ -145,6 +145,11 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     });
 
     bmm.ev.on('creds.update', saveCreds);
+    //  await saveSessionToSupabase(phoneNumber, {
+    //             creds: bmm.authState.creds,
+    //             keys: bmm.authState.keys,
+    //             authId
+    //         });
 
     function cleanup() {
         try { bmm.ws?.close(); } catch {}

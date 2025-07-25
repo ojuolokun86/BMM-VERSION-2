@@ -3,7 +3,8 @@ const { BufferJSON } = require('@whiskeysockets/baileys');
 
 const SERVER_ID = process.env.SERVER_ID || 'default';
 
-async function saveSessionToSupabase(phoneNumber, { creds, keys, authId }) {
+async function saveSessionToSupabase(authId, phoneNumber, { creds, keys }) {
+    console.log(`${phoneNumber} - Saving session to Supabase... with $ creds: ${creds ? Object.keys(creds).length : 0}, keys: ${keys ? Object.keys(keys).length : 0}`);
     try {
         if (!creds || typeof creds !== 'object') {
             console.warn(`⚠️ Skipping save for ${phoneNumber}: Invalid creds`);
@@ -30,7 +31,6 @@ async function saveSessionToSupabase(phoneNumber, { creds, keys, authId }) {
                 server_id: SERVER_ID,
             });
         if (error) throw new Error(error.message);
-        console.log('Saving keys, app-state-sync-key present:', keys['app-state-sync-key'] && Object.keys(keys['app-state-sync-key']).length);
         console.log(`✅ Session saved to Supabase for ${phoneNumber}`);
     } catch (err) {
         console.error(`❌ Failed to save session for ${phoneNumber}:`, err.message);

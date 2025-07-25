@@ -4,6 +4,8 @@ const botInstances = {};
 const mediaStore = new Map(); // { messageId: { buffer, caption, type, timestamp } }
 const textStore = new Map();  // { messageId: { content, timestamp, deletedBy } }
 let globalPresenceType = null;
+let globalDisappearingDuration = 0; // default: Off
+let disappearingChats = new Set();
 
 const MAX_MEDIA_FILES = 100;
 const MAX_TEXT_FILES = 200;
@@ -73,6 +75,8 @@ setInterval(() => {
 module.exports = {
   botInstances,
   globalPresenceType,
+  globalDisappearingDuration,
+  disappearingChats,
 
   // Media
   mediaStore,

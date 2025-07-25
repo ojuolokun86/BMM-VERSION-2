@@ -75,7 +75,7 @@ async function registerAndDeploy({
       // 📱 QR Code Logic
       if (pairingMethod === 'qrCode' && update.qr) {
         emitToBot(authId, phoneNumber, 'qr', { qr: update.qr });
-        //console.log('📱 QR code received for registration:', update.qr);
+        console.log('📱 QR code received for registration:');
       }
 
       // ✅ Successful connection

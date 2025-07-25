@@ -1,5 +1,6 @@
 const sendToChat = require('../../utils/sendToChat');
 const { quotedInfo } = require('../../utils/sendToChat');
+const globalStore = require('../../utils/globalStore');
 
 const disappearingOptions = {
   0: 0,         // Off
@@ -45,7 +46,8 @@ async function setDisappearingCommand(sock, msg) {
       return;
     }
 
-    const duration = disappearingOptions[option];
+     const duration = disappearingOptions[option];
+    globalStore.globalDisappearingDuration = duration;
 
     try {
       await sock.sendMessage(from, {
