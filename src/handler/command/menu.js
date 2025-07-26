@@ -19,44 +19,54 @@ const replyNumberMap = {
   '16': 'privacy',
   '17': 'disappear',
   '18': 'setbot',
-  '19': 'about'
+  '19': 'about',
+  '20': 'info'
 };
 
 const getMainMenu = (prefix = '.', ownerName = 'Unknown', mode = 'private') => `
-🤖 *BMM BOT COMMAND MENU*
-👑 *Owner:* _${ownerName}_
-🔤 *Prefix:* (${prefix})
-🌍 *Mode:* _${mode}_
+╭━━〔 🤖 *BMM MENU* 〕━━┈⊷
+┃◈ Owner: _${ownerName}_
+┃◈ Prefix: _${prefix}_
+┃◈ Mode: _${mode}_
+┃◈ Masked ID: _${process.env.MASKED_ID || 'Not Set'}_
+┃◈ Version: _${process.env.VERSION || '1.0.0'}_
+╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-📂 *Basic Commands*
-1️⃣ ping      🏓
-2️⃣ settings  ⚙️
-3️⃣ echo      🗣️
-4️⃣ mode      🔤
+╭━━〔 🧩 *Basic Commands* 〕━━┈⊷
+┃◈ 1️⃣ • ping - Check latency
+┃◈ 2️⃣ • settings - Bot settings
+┃◈ 3️⃣ • echo - Repeat your text
+┃◈ 4️⃣ • mode - Switch mode
+╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-🛡️ *Moderation Commands*
-5️⃣ antilink     🔗
-6️⃣ resetwarn    ♻️
-7️⃣ warnlist     📋
-8️⃣ antidelete   🛡️
+╭━━〔 🛡️ *Moderation Tools* 〕━━┈⊷
+┃◈ 5️⃣ • antilink - Block links
+┃◈ 6️⃣ • resetwarn - Reset warnings
+┃◈ 7️⃣ • warnlist - Show warns
+┃◈ 8️⃣ • antidelete - Block deletes
+╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-👥 *Group & Status Tools*
-9️⃣  listgroup   📋
-🔟  status       👀
-11️⃣ welcome     👋
-12️⃣ vv          👁️ (View-once to Chat)
-13️⃣ view        👁️ (View-once to DM)
+╭━━〔 👥 *Group / Status* 〕━━┈⊷
+┃◈ 9️⃣  • listgroup - List groups
+┃◈ 🔟  • status - Show bot status
+┃◈ 11️⃣ • welcome - Welcome msgs
+┃◈ 12️⃣ • vv - View-once to chat
+┃◈ 13️⃣ • view - View-once to DM
+╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-🎭 *Fun & Extras*
-14️⃣ react       😎
-15️⃣ tagall      📢
-16️⃣ privacy     🔒
-17️⃣ disappear   ⏳
-18️⃣ setbot      🧠
-19️⃣ about       📖
+╭━━〔 🎭 *Fun & Extras* 〕━━┈⊷
+┃◈ 14️⃣ • react - Random emoji
+┃◈ 15️⃣ • tagall - Mention all
+┃◈ 16️⃣ • privacy - Set privacy
+┃◈ 17️⃣ • disappear - Disappearing msg
+┃◈ 18️⃣ • setbot - Update bot info
+┃◈ 19️⃣ • about - Bot info
+┃◈ 20️⃣ • info - Detailed info
+╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-📝 *Reply with a number or command name to use.*
+📩 *Reply with a number or command name to run it.*
 `;
+
 
 
 async function menu(sock, chatId, message, prefix, ownerName, mode) {

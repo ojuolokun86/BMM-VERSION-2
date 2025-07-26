@@ -34,6 +34,7 @@
     "express": "^5.1.0",
     "fs-extra": "^11.3.0",
     "http": "^0.0.1-security",
+    "ping": "^0.4.4",
     "pino": "^9.7.0",
     "sharp": "^0.32.6",
     "socket.io": "^4.8.1",

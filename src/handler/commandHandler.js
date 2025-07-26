@@ -20,6 +20,7 @@ const presenceCommand = require('./command/presenceCommand');
 const setPrivacyCommand = require('./command/privacyCommand');
 const setDisappearingCommand = require('./command/disappearing');
 const setBotPrivacyCommand = require('./command/privacy2');
+const infoCommand = require('./command/info');
 
 
 
@@ -146,8 +147,11 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     case 'disappearing':
       await setDisappearingCommand(sock, msg);
       break;
-    case 'setbot':
+    case 'setprofile':
       await setBotPrivacyCommand(sock, msg);
+      break;
+    case 'info':
+      await infoCommand(sock, msg);
       break;
   default:
     await sendToChat(sock, from, {
