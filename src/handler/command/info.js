@@ -49,7 +49,7 @@ const { exec } = require('child_process');
 
 function getSpeedTest() {
   return new Promise((resolve, reject) => {
-    exec('"C:\\Speedtest\\speedtest.exe"', (error, stdout, stderr) => {
+    exec("speedtest", (error, stdout, stderr) => {
       if (error) return reject(`Speedtest error: ${error.message}`);
 
       try {
