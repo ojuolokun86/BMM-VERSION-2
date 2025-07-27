@@ -149,12 +149,11 @@ const flagEmoji = getFlagEmoji(vpn?.countryCode || vpn?.country || ''); // 'NG' 
 const server = process.env.MASKED_ID || 'Unknown';
 const maskedId = `${server}-${vpn?.countryCode || vpn?.country || 'XXX'} ${flagEmoji}`;
 const { download, upload, ping } = await getSpeedTest();
-const osInfo = getOSInfo();
+
 // const latency = await getLatency(); // Run ping test ┃◈┃• Latency: _${latency}_
 
   vpnBlock = `╭━━〔 *🛰️ SERVER Info* 〕━━┈⊷
 ┃◈╭─────────────·๏
-┃◈┃• Hostname: _${osInfo.hostname}_
 ┃◈┃• Location: _${locationStr}_
 ┃◈┃• ISP: _${vpn?.org}_
 ┃◈┃• Ping: _${ping}_
@@ -191,7 +190,7 @@ const osInfo = getOSInfo();
   }
 
   // OS Info
-  
+  const osInfo = getOSInfo();
   osBlock = `╭━━〔 *🖥️ System Info* 〕━━┈⊷
 ┃◈╭─────────────·๏
 ┃◈┃• Hostname: _${osInfo.hostname}_
