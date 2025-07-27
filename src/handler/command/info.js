@@ -95,18 +95,18 @@ async function getVpnInfo() {
     return null;
   }
 }
-const ping = require('ping');
+// const ping = require('ping');
 
-async function getLatency(host = '8.8.8.8') {
-  try {
-    const res = await ping.promise.probe(host, {
-      timeout: 2, // seconds
-    });
-    return res.time !== 'unknown' ? `${res.time} ms` : 'Timeout';
-  } catch {
-    return 'Error';
-  }
-}
+// async function getLatency(host = '8.8.8.8') {
+//   try {
+//     const res = await ping.promise.probe(host, {
+//       timeout: 2, // seconds
+//     });
+//     return res.time !== 'unknown' ? `${res.time} ms` : 'Timeout';
+//   } catch {
+//     return 'Error';
+//   }
+// }
 
 
 
@@ -149,14 +149,13 @@ const flagEmoji = getFlagEmoji(vpn?.countryCode || vpn?.country || ''); // 'NG' 
 const server = process.env.MASKED_ID || 'Unknown';
 const maskedId = `${server}-${vpn?.countryCode || vpn?.country || 'XXX'} ${flagEmoji}`;
 const { download, upload, ping } = await getSpeedTest();
-const latency = await getLatency(); // Run ping test
+// const latency = await getLatency(); // Run ping test ┃◈┃• Latency: _${latency}_
 
   vpnBlock = `╭━━〔 *🛰️ SERVER Info* 〕━━┈⊷
 ┃◈╭─────────────·๏
-┃◈┃• Hostname: _${vpn?.hostname || 'Unknown'}_
+┃◈┃• Hostname: _${osInfo.hostname}_
 ┃◈┃• Location: _${locationStr}_
 ┃◈┃• ISP: _${vpn?.org}_
-┃◈┃• Latency: _${latency}_
 ┃◈┃• Ping: _${ping}_
 ┃◈┃• Download: _${download}_
 ┃◈┃• Upload: _${upload}_
