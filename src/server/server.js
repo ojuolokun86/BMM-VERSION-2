@@ -67,7 +67,7 @@ function createServer() {
 
         if (error || !user) {
             console.error('❌ User not found or error fetching user:', error ? error.message : 'User not found');
-            return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+            return res.status(401).json({ success: false, message: 'Invalid email.' });
         }
 
         // Compare passwords
@@ -75,7 +75,7 @@ function createServer() {
             const isPasswordValid = await bcrypt.compare(password, user.password);
             if (!isPasswordValid) {
                 console.error('❌ Invalid password for user:', email);
-                return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+                return res.status(402).json({ success: false, message: 'Invalid password.' });
             }
 
             // Fetch subscription info

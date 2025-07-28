@@ -12,7 +12,8 @@ const sessions = new Map(); // Map<authId:phoneNumber, { bmm, cleanup }>
 const { botInstances } = require('../utils/globalStore')
 const deletedSessions = new Set(); // To prevent restart of deleted bots
 const handleDeletedMessage = require('../handler/features/antideleteListener');
-
+const { makeInMemoryStore } = require('@rodrigogs/baileys-store')
+const store = makeInMemoryStore({});
 
 
 async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStatus, onQr, onPairingCode }) {
@@ -41,9 +42,11 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         syncFullHistory: true,
         shouldSyncHistoryMessage: true,
         generateHighQualityLinkPreview: true,
-        getMessage: async () => undefined,
+       getMessage: async (key) => {
+        return (await store.loadMessage?.(key.remoteJid, key.id)) || undefined;
+         }
     });
-
+    store.bind(bmm.ev);
     bmm.ev.on('connection.update', async (update) => {
         if (update.connection === 'open') {
             botInstances[phoneNumber] = bmm; // or sock
@@ -177,10 +180,9 @@ bmm.ev.on('app-state.sync', async (update) => {
 
     if (appStateKeys.length > 0) {
         // Save again with app-state-sync-key included
-        await saveSessionToSupabase(phoneNumber, {
+        await saveSessionToSupabase(authId, phoneNumber, {
             creds: bmm.authState.creds,
-            keys: bmm.authState.keys,
-            authId
+            keys: bmm.authState.keys
         });
         console.log(`💾 Session with app-state-sync-key saved for ${phoneNumber}`);
     }

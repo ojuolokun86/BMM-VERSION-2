@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { getContextInfo, getForwardedContext } = require('../utils/contextInfo');
 
 // Load a thumbnail image for rich preview (optional)
 const imagePath = path.join(__dirname, '../assets/BMM2.jpg');
@@ -87,22 +88,7 @@ async function sendToChat(sock, chatId, options = {}) {
     // Only add contextInfo if not a mention
     if (!mentions || mentions.length === 0) {
       payload.contextInfo = {
-        forwardingScore: 999,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-          newsletterJid: '120363403127154832@newsletter',
-          newsletterName: '⚡🤖BMM🤖⚡',
-          serverMessageId: -1
-        },
-        externalAdReply: {
-          title: '🤖 BMM WhatsApp Bot',
-          body: 'Powering smart automation.',
-          mediaType: 1,
-          showAdAttribution: true,
-          renderLargerThumbnail: false,
-          //thumbnailUrl: 'https://files.catbox.moe/ow2buv.jpg',
-          thumbnail: imageBuffer
-        }
+        ...getContextInfo()
       };
     }
 

@@ -9,7 +9,7 @@ let disappearingChats = new Set();
 
 const MAX_MEDIA_FILES = 100;
 const MAX_TEXT_FILES = 200;
-const EXPIRATION_TIME = 10 * 60 * 1000; // 10 minutes
+const EXPIRATION_TIME = 30 * 60 * 1000; // 30  minutes
 
 // MEDIA
 // Update saveMediaToStore and getMediaFromStore to handle senderJid

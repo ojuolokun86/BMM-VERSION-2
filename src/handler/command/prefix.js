@@ -1,16 +1,45 @@
-const { setUserPrefix, getUserPrefix, isBotOwner } = require('../../database/database');
+const { setUserPrefix, getUserPrefix, isBotOwner, getBotOwnerByPhone } = require('../../database/database');
 const sendToChat = require('../../utils/sendToChat');
-
-module.exports = async function prefixCommand(sock, msg, textMsg, phoneNumber) {
-  const from = msg.key.remoteJid;
-  const senderId = msg.key.participant
-    ? msg.key.participant.split('@')[0]
-    : msg.key.remoteJid.split('@')[0];
+function isRealOwner(senderId, senderLid, sock) {
+  // Get bot's main ID and LID
   const botId = sock.user?.id?.split(':')[0]?.split('@')[0];
   const botLid = sock.user?.lid?.split(':')[0];
 
+  // Get registered owner from database (if available)
+   const dbOwnerId = getBotOwnerByPhone(botId) || null;
+
+  // Check all possible matches
+  return (
+    senderId === botId ||
+    senderId === botLid ||
+    senderLid === botId ||
+    senderLid === botLid ||
+    (dbOwnerId && senderId === dbOwnerId)
+  );
+}
+
+module.exports = async function prefixCommand(sock, msg, textMsg, phoneNumber) {
+  const from = msg.key.remoteJid;
+  const isGroup = from.endsWith('@g.us')
+let senderJid;
+  if (isGroup) {
+    senderJid = msg.key.participant;
+  } else {
+    // If message is from the bot itself, use bot ID
+    // If message is from the other user, use `remoteJid`
+    senderJid = msg.key.fromMe ? sock.user.id : from;
+  }
+
+  const senderId = senderJid.split(':')[0]?.split('@')[0];
+  const senderLid = senderJid.includes(':') ? senderJid.split(':')[1] : null;
+
+  const botId = sock.user?.id?.split(':')[0]?.split('@')[0];
+  const botLid = sock.user?.lid?.split(':')[0];
+
+ const isOwner = isRealOwner(senderId, senderLid, sock )
+
   // ✅ Check if sender is the bot owner
-  if (!isBotOwner(senderId, null, botId, botLid)) {
+  if (!isOwner) {
     await sendToChat(sock, from, {
       message: '❌ Only the bot owner can change the prefix.'
     });

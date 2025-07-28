@@ -1,67 +1,97 @@
 const sendToChat = require('../../utils/sendToChat');
+const { getContextInfo, getForwardedContext } = require('../../utils/contextInfo');
+
 
 const replyNumberMap = {
   '1': 'ping',
   '2': 'settings',
-  '3': 'echo',
+  '3': 'prefix',
   '4': 'mode',
+
   '5': 'antilink',
   '6': 'resetwarn',
   '7': 'warnlist',
   '8': 'antidelete',
+
   '9': 'listgroup',
   '10': 'status',
-  '11': 'welcome',
-  '12': 'vv',
-  '13': 'view',
-  '14': 'react',
-  '15': 'tagall',
-  '16': 'privacy',
-  '17': 'disappear',
-  '18': 'setbot',
-  '19': 'about',
-  '20': 'info'
+  '11': 'vv',
+  '12': 'view',
+  '13': 'react',
+  '14': 'online',
+  '15': 'privacy',
+  '16': 'disappear',
+  '17': 'setprofile',
+  '18': 'info',
+
+  '19': 'welcome',
+  '20': 'tag',
+  '21': 'tagall',
+  '22': 'mute',
+  '23': 'unmute',
+  '24': 'lockinfo',
+  '25': 'unlockinfo',
+  '26': 'add',
+  '27': 'kick',
+  '28': 'promote',
+  '29': 'demote',
+  '30': 'requestlist',
+  '31': 'acceptall',
+  '32': 'rejectall',
+  '33': 'poll'
 };
+
 
 const getMainMenu = (prefix = '.', ownerName = 'Unknown', mode = 'private') => `
 ╭━━〔 🤖 *BMM MENU* 〕━━┈⊷
-┃◈ Owner: _${ownerName}_
-┃◈ Prefix: _${prefix}_
-┃◈ Mode: _${mode}_
-┃◈ Masked ID: _${process.env.MASKED_ID || 'Not Set'}_
-┃◈ Version: _${process.env.VERSION || '1.0.0'}_
+┃👑 Owner: _${ownerName}_
+┃🛠️ Prefix: _${prefix}_
+┃⚙️ Mode: _${mode}_
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🧩 *Basic Commands* 〕━━┈⊷
-┃◈ 1️⃣ • ping - Check latency
-┃◈ 2️⃣ • settings - Bot settings
-┃◈ 3️⃣ • echo - Repeat your text
-┃◈ 4️⃣ • mode - Switch mode
+╭━━〔 ⚙️ *Core Commands* 〕━━┈⊷
+┃◈ 🏓 ping - Check bot latency **1**
+┃◈ ⚙️ settings - Show bot settings **2**
+┃◈ 📝 prefix - Change command prefix **3**
+┃◈ 🔁 mode - Switch bot mode **4**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
 ╭━━〔 🛡️ *Moderation Tools* 〕━━┈⊷
-┃◈ 5️⃣ • antilink - Block links
-┃◈ 6️⃣ • resetwarn - Reset warnings
-┃◈ 7️⃣ • warnlist - Show warns
-┃◈ 8️⃣ • antidelete - Block deletes
+┃◈ 🚫 antilink - Auto-block links **5**
+┃◈ ♻️ resetwarn - Reset user warnings **6**
+┃◈ 📋 warnlist - View warn list **7**
+┃◈ 🧾 antidelete - Restore deleted messages **8**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 👥 *Group / Status* 〕━━┈⊷
-┃◈ 9️⃣  • listgroup - List groups
-┃◈ 🔟  • status - Show bot status
-┃◈ 11️⃣ • welcome - Welcome msgs
-┃◈ 12️⃣ • vv - View-once to chat
-┃◈ 13️⃣ • view - View-once to DM
+╭━━〔 👥 *Bot commands* 〕━━┈⊷
+┃◈ 📜 listgroup - Show bot’s groups **9**
+┃◈ 📊 status - View & react to status **10**
+┃◈ 👁️‍🗨️ vv - View-once to chat **11**
+┃◈ 📥 view - View-once to DM **12**
+┃◈ 😂 react - Random emoji react **13**
+┃◈ 🟢 online - Show who's online **14**
+┃◈ 🔐 privacy - Bot privacy config **15**
+┃◈ ⏳ disappear - Set disappearing msg **16**
+┃◈ 🧑‍💼 setprofile - Set bot profile **17**
+┃◈ ℹ️ info - Show bot info **18**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🎭 *Fun & Extras* 〕━━┈⊷
-┃◈ 14️⃣ • react - Random emoji
-┃◈ 15️⃣ • tagall - Mention all
-┃◈ 16️⃣ • privacy - Set privacy
-┃◈ 17️⃣ • disappear - Disappearing msg
-┃◈ 18️⃣ • setbot - Update bot info
-┃◈ 19️⃣ • about - Bot info
-┃◈ 20️⃣ • info - Detailed info
+╭━━〔 🔧 *Group Controls* 〕━━┈⊷
+┃◈ 👋 welcome - Welcome messages **19**
+┃◈ 🧍 tag - Mention all (plain) **20**
+┃◈ 🧠 tagall - Mention all (with tags) **21**
+┃◈ 🔇 mute - Lock group chat **22**
+┃◈ 🔊 unmute - Unlock group chat **23**
+┃◈ 🔒 lockinfo - Lock group info **24**
+┃◈ 🔓 unlockinfo - Unlock group info **25**
+┃◈ ➕ add - Add member **26**
+┃◈ ➖ kick - Kick member **27**
+┃◈ 🔼 promote - Promote to admin **28**
+┃◈ 🔽 demote - Demote admin **29**
+┃◈ 📥 requestlist - View join requests **30**
+┃◈ ✅ acceptall - Accept all requests **31**
+┃◈ ❌ rejectall - Reject all requests **32**
+┃◈ 📊 poll - Create a poll **33**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
 📩 *Reply with a number or command name to run it.*
@@ -69,9 +99,18 @@ const getMainMenu = (prefix = '.', ownerName = 'Unknown', mode = 'private') => `
 
 
 
+
 async function menu(sock, chatId, message, prefix, ownerName, mode) {
   const menuText = getMainMenu(prefix, ownerName, mode);
-  const sent = await sock.sendMessage(chatId, { text: menuText, quoted: message });
+  const contextInfo = {
+  ...getContextInfo(),
+  ...getForwardedContext()
+};
+  const sent = await sock.sendMessage(chatId, {
+  text: menuText,
+  contextInfo,
+  quoted: message
+});
   const menuMsgId = sent.key.id;
 
   const listener = async (m) => {

@@ -21,8 +21,21 @@ const setPrivacyCommand = require('./command/privacyCommand');
 const setDisappearingCommand = require('./command/disappearing');
 const setBotPrivacyCommand = require('./command/privacy2');
 const infoCommand = require('./command/info');
-
-
+const {
+  muteGroup,
+  unmuteGroup,
+  requestList,
+  acceptAllRequests,
+  rejectAllRequests,
+  addUserToGroup,
+  lockGroupInfo,
+  unlockGroupInfo,
+  kickUser,
+  promoteUser,
+  demoteUser,
+  handleGroupCommand
+} = require('./command/groupCommand');
+const pollCommand = require('./command/poll');
 
 
 
@@ -33,7 +46,7 @@ function getMatchedOwner(senderId, senderLid, botId, botLid) {
 }
 
 async function execute({ sock, msg, textMsg, phoneNumber }) {
-  //console.log(`📥 Command execution started for ${msg.key.remoteJid} with text: ${textMsg}`);
+  try{
   const from = msg.key.remoteJid;
   const jid = msg.key.fromMe ? msg.key.remoteJid : msg.key.participant || msg.key.remoteJid;
   const senderId = jid.split(':')[0].split('@')[0];
@@ -72,10 +85,10 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     }
 
     if (getReactToCommand(botId)) {
-  const emoji = getEmojiForCommand(command);
-  await sock.sendMessage(from, { react: { text: emoji, key: msg.key } });
-  console.log(`🔄 Reacted with emoji: ${emoji} for command: ${command}`);
-}
+      const emoji = getEmojiForCommand(command);
+      await sock.sendMessage(from, { react: { text: emoji, key: msg.key } });
+      console.log(`🔄 Reacted with emoji: ${emoji} for command: ${command}`);
+    }
 
     //console.log(`📥 Command received: ${command} | args: ${args.join(' ')}`);
   switch (command) {
@@ -153,12 +166,60 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     case 'info':
       await infoCommand(sock, msg);
       break;
+    case 'setbot':
+      await setBotPrivacyCommand(sock, msg);
+      break;
+    case 'mute':
+      await muteGroup(sock, msg, senderId);
+      break;
+    case 'unmute':
+      await unmuteGroup(sock, msg, senderId);
+      break;
+    case 'poll':
+      await pollCommand(sock, msg, textMsg);
+      break;
+    case 'requestlist':
+      await requestList(sock, msg, phoneNumber);
+      break;
+    case 'acceptall':
+      await acceptAllRequests(sock, msg, phoneNumber);
+      break;
+    case 'rejectall':
+      await rejectAllRequests(sock, msg, phoneNumber);
+      break;
+    case 'lockinfo':
+      await lockGroupInfo(sock, msg, phoneNumber);
+      break;
+    case 'unlockinfo':
+      await unlockGroupInfo(sock, msg, phoneNumber);
+      break;
+    case 'add':
+      await addUserToGroup(sock, msg, phoneNumber);
+      break;
+    case 'kick':
+      await kickUser(sock, msg, phoneNumber);
+      break;
+    case 'promote':
+      await promoteUser(sock, msg, phoneNumber);
+      break;
+    case 'demote':
+      await demoteUser(sock, msg, phoneNumber);
+      break;
+    case 'group':
+      await handleGroupCommand(sock, msg);
+      break;
   default:
     await sendToChat(sock, from, {
       message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}help* for a list of commands.`
     });
     break;
 }
+  } catch (err) {
+    console.error('❌ Command error:', err);
+    await sendToChat(sock, from, {
+      message: `❌ Error: ${err.message || err.toString()}`
+    });
+  }
 }
 
 module.exports = { execute };
