@@ -111,7 +111,71 @@ async function handleGroupStatsCommand(sock, remoteJid, botInstance) {
     });
 
 }
-
+// Returns detailed inactive members array, same as used in stats display
+function getInactiveMembersDetailed(stats, thresholdDays, excludeJids = []) {
+    const now = Date.now();
+    const threshold = now - thresholdDays * 24 * 60 * 60 * 1000;
+    return Object.entries(stats)
+        .filter(([userId, stat]) =>
+            !excludeJids.includes(userId) &&
+            stat.lastMessageTime &&
+            stat.lastMessageTime < threshold
+        )
+        .map(([userId, stat]) => ({
+            userId,
+            messageCount: stat.messageCount,
+            lastMessageTime: stat.lastMessageTime
+        }));
+}
 module.exports = {
-    handleGroupStatsCommand
+    handleGroupStatsCommand,
+    getInactiveMembersDetailed
 };
+async function handleListInactiveCommand(sock, remoteJid, inactivityDays = 30) {
+    await loadGroupStatsFromDB(remoteJid);
+    const metadata = await sock.groupMetadata(remoteJid);
+
+    // Build exclude list (admins and bot)
+    const admins = metadata.participants.filter(p => p.admin).map(p => p.id);
+    const botId = sock.user?.lid?.split(':')[0] || sock.user?.id?.split(':')[0];
+    const botJid = `${botId}@s.whatsapp.net`;
+    const excludeJids = admins.concat([botJid]);
+
+    // Get stats and inactive members
+    const stats = getGroupStats(remoteJid);
+    const { getInactiveMembersDetailed } = require('./groupStatsCommand');
+    const inactiveArr = getInactiveMembersDetailed(stats, inactivityDays, excludeJids);
+
+    // Map bareId to full JID for mentions
+    function bareId(jid) { return jid.split('@')[0]; }
+    const participantBareMap = {};
+    for (const p of metadata.participants) participantBareMap[bareId(p.id)] = p.id;
+
+    // Only mention those still in the group
+    const validInactive = inactiveArr
+        .filter(u => participantBareMap[u.userId])
+        .map(u => ({
+            ...u,
+            fullJid: participantBareMap[u.userId]
+        }));
+
+    if (!validInactive.length) {
+        await sock.sendMessage(remoteJid, { text: "✅ No inactive members found in this group." });
+        return;
+    }
+
+    const mentionList = validInactive.map((u, i) => {
+        const lastActive = u.lastMessageTime
+            ? new Date(u.lastMessageTime).toLocaleDateString()
+            : "never";
+        return `${i + 1}. @${bareId(u.fullJid)} (${u.messageCount} msgs, last active: ${lastActive})`;
+    }).join('\n');
+    const mentions = validInactive.map(u => u.fullJid);
+
+    await sock.sendMessage(remoteJid, {
+        text: `⚠️ *Inactive Members (${inactivityDays}+ days):*\n\n${mentionList}`,
+        mentions
+    });
+}
+
+module.exports.handleListInactiveCommand = handleListInactiveCommand;

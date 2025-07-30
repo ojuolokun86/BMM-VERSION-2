@@ -12,54 +12,55 @@ const replyNumberMap = {
   '6': 'menu',
   '7': 'info',
 
-  // Moderation Tools
+  // Moderation & Security
   '8': 'antilink',
   '9': 'resetwarn',
   '10': 'warnlist',
   '11': 'antidelete',
+  '12': 'privacy',
+  '13': 'disappear',
 
-  // Bot Commands
-  '12': 'listgroup',
-  '13': 'status',
-  '14': 'vv',
-  '15': 'view',
-  '16': 'react',
-  '17': 'online',
-  '18': 'privacy',
-  '19': 'disappear',
-  '20': 'setprofile',
-  '21': 'info',
+  // Group Management
+  '14': 'listgroup',
+  '15': 'welcome',
+  '16': 'tag',
+  '17': 'tagall',
+  '18': 'mute',
+  '19': 'unmute',
+  '20': 'lockinfo',
+  '21': 'unlockinfo',
+  '22': 'add',
+  '23': 'kick',
+  '24': 'kick inactive',
+  '25': 'promote',
+  '26': 'demote',
+  '27': 'requestlist',
+  '28': 'acceptall',
+  '29': 'rejectall',
+  '30': 'poll',
+  '31': 'group desc',
+  '32': 'group pic',
+  '33': 'group link',
+  '34': 'group stats',
+  '35': 'group revoke',
+  '36': 'listinactive',
 
-  // Group Controls
-  '22': 'welcome',
-  '23': 'tag',
-  '24': 'tagall',
-  '25': 'mute',
-  '26': 'unmute',
-  '27': 'lockinfo',
-  '28': 'unlockinfo',
-  '29': 'add',
-  '30': 'kick',
-  '31': 'promote',
-  '32': 'demote',
-  '33': 'requestlist',
-  '34': 'acceptall',
-  '35': 'rejectall',
-  '36': 'poll',
-  '37': 'group desc',
-  '38': 'group pic',
-  '39': 'group link',
-  '40': 'group stats',
-  '41': 'group revoke',
+  // Media & Fun
+  '37': 'sticker',
+  '38': 'stimage',
+  '39': 'stgif',
+  '40': 'ss',
+  '41': 'imagine',
+  '42': 'song',
+  '43': 'play',
 
-  // Extra Media & Fun Commands (not in menu yet)
-  '42': 'sticker',
-  '43': 'stimage',
-  '44': 'stgif',
-  '45': 'ss',   
+  // Utilities
+  '44': 'status',
+  '45': 'vv',
+  '46': 'view',
+  '47': 'online',
+  '48': 'setprofile'
 };
-
-
 
 const getMainMenu = (prefix = '.', ownerName = 'Unknown', mode = 'private', phoneNumber = 'Unknown', version = 'Unknown') => `
 ╭━━〔 🤖 *BMM MENU* 〕━━┈⊷
@@ -71,68 +72,71 @@ const getMainMenu = (prefix = '.', ownerName = 'Unknown', mode = 'private', phon
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
 ╭━━〔 ⚙️ *Core Commands* 〕━━┈⊷
-┃◈ 🏓 ping - Check bot latency **1**
-┃◈ 🧰 settings - Show bot settings **2**
-┃◈ 🔤 prefix - Change command prefix **3**
-┃◈ 🔄 mode - Switch bot mode **4**
-┃◈ 📚 help - Show help menu **5**
-┃◈ 📚 menu - Show menu **6**
-┃◈ 📚 info - Show bot info **7**
+┃◈ 🏓 ping **1**
+┃◈ 🧰 settings **2**
+┃◈ 🔤 prefix **3**
+┃◈ 🔄 mode **4**
+┃◈ 📚 help **5**
+┃◈ 📚 menu **6**
+┃◈ ℹ️ info **7**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🛡️ *Moderation Tools* 〕━━┈⊷
-┃◈ 🧨 antilink - Auto-block links **8**
-┃◈ 🧹 resetwarn - Reset user warnings **9**
-┃◈ 📑 warnlist - View warn list **10**
-┃◈ 🕵️‍♂️ antidelete - Restore deleted messages **11**
+╭━━〔 🛡️ *Moderation & Security* 〕━━┈⊷
+┃◈ 🧨 antilink **8**
+┃◈ 🧹 resetwarn **9**
+┃◈ 📑 warnlist **10**
+┃◈ 🕵️‍♂️ antidelete **11**
+┃◈ 🔐 privacy **12**
+┃◈ ⌛ disappear **13**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🤖 *Bot Commands* 〕━━┈⊷
-┃◈ 🗂️ listgroup - Show bot’s groups **12**
-┃◈ 📶 status - View & react to status **13**
-┃◈ 👁️ vv - View-once to chat **14**
-┃◈ 📤 view - View-once to DM **15**
-┃◈ 😹 react - Random emoji react **16**
-┃◈ 👥 online - Show who's online **17**
-┃◈ 🔐 privacy - Bot privacy config **18**
-┃◈ ⌛ disappear - Set disappearing msg **19**
-┃◈ 🧑‍🎨 setprofile - Set bot profile **20**
-┃◈ ℹ️ info - Show bot info **21**
+╭━━〔 🧰 *Group Management* 〕━━┈⊷
+┃◈ 🗂️ listgroup **14**
+┃◈ 🎉 welcome **15**
+┃◈ 🗣️ tag **16**
+┃◈ 📢 tagall **17**
+┃◈ 🔇 mute **18**
+┃◈ 🔊 unmute **19**
+┃◈ 🛑 lockinfo **20**
+┃◈ 🆓 unlockinfo **21**
+┃◈ ➕ add **22**
+┃◈ ➖ kick **23**
+┃◈ 💤 kick inactive **24**
+┃◈ 🆙 promote **25**
+┃◈ 🧍 demote **26**
+┃◈ 📬 requestlist **27**
+┃◈ ✅ acceptall **28**
+┃◈ ❌ rejectall **29**
+┃◈ 📊 poll **30**
+┃◈ 📝 group desc **31**
+┃◈ 🖼️ group pic **32**
+┃◈ 🔗 group link **33**
+┃◈ 📈 group stats **34**
+┃◈ 🚫 group revoke **35**
+┃◈ 💤 listinactive **36**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🧰 *Group Controls* 〕━━┈⊷
-┃◈ 🎉 welcome - Welcome messages **22**
-┃◈ 🗣️ tag - Mention all (plain) **23**
-┃◈ 📢 tagall - Mention all (with tags) **24**
-┃◈ 🔇 mute - Lock group chat **25**
-┃◈ 🔊 unmute - Unlock group chat **26**
-┃◈ 🛑 lockinfo - Lock group info **27**
-┃◈ 🆓 unlockinfo - Unlock group info **28**
-┃◈ ➕ add - Add member **29**
-┃◈ ➖ kick - Kick member **30**
-┃◈ 🆙 promote - Promote to admin **31**
-┃◈ 🧍 demote - Demote admin **32**
-┃◈ 📬 requestlist - View join requests **33**
-┃◈ ✅ acceptall - Accept all requests **34**
-┃◈ ❌ rejectall - Reject all requests **35**
-┃◈ 📊 poll - Create a poll **36**
-┃◈ 📝 group desc - Edit Group description **37**
-┃◈ 🖼️ group pic - Change Group picture **38**
-┃◈ 🔗 group link - Get Group link **39**
-┃◈ 📈 group stats - See Group stats **40**
-┃◈ 🚫 group revoke - Revoke Group link **41**
+╭━━〔 🎨 *Media & Fun* 〕━━┈⊷
+┃◈ 🖼️ sticker **37**
+┃◈ 🖼️ stimage **38**
+┃◈ 🖼️ stgif **39**
+┃◈ 🌐 ss **40**
+┃◈ 🎨 imagine **41**
+┃◈ 🎵 song **42**
+┃◈ ▶️ play **43**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
 
-╭━━〔 🎨 *Fun & Media* 〕━━┈⊷
-┃◈ 🖼️ sticker - Convert image/video to sticker **42**
-┃◈ 🖼️ stimage - Image to sticker (no crop) **43**
-┃◈ 🖼️ stgif - GIF to animated sticker **44**
-┃◈ 🌐 ss - Webpage screenshot **45**
+╭━━〔 📊 *Utilities* 〕━━┈⊷
+┃◈ 📶 status **44**
+┃◈ 👁️ vv **45**
+┃◈ 📤 view **46**
+┃◈ 👥 online **47**
+┃◈ 🧑‍🎨 setprofile **48**
 ╰━━━━━━━━━━━━━━━━━━━━━━━┈⊷
+
 📩 *Reply with a number or command name to run it.*
-*Follow our channel for Update & Support*
+*Type .help <command> for details on any command.*
 `;
-
 
 
 process.env.VERSION;

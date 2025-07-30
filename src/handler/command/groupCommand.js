@@ -334,41 +334,6 @@ async function addUserToGroup(sock, msg, userId) {
     }, { quoted: msg });
   }
 }
-async function kickUser(sock, msg, userId) {
-  const groupJid = msg.key.remoteJid;
-
-  if (!groupJid || !groupJid.endsWith('@g.us')) {
-    return sendToChat(sock, groupJid, { message: '❌ This command only works in groups.' }, { quoted: msg });
-  }
-
-  const isAdmin = await checkIfAdmin(sock, groupJid, userId);
-  const isBotAdmin = await checkIfAdmin(sock, groupJid, userId);
-  if (!isAdmin) {
-    return sendToChat(sock, groupJid, { message: '❌ Only group admins can kick users.' }, { quoted: msg });
-  }
-  if (!isBotAdmin) {
-    return sendToChat(sock, groupJid, { message: '❌ I need to be an admin to kick users.' }, { quoted: msg });
-  }
-
-  const targetJid = extractTargetJid(msg);
-  if (!targetJid) {
-    return sendToChat(sock, groupJid, { message: '❌ Reply to a user or mention them to kick.' }, { quoted: msg });
-  }
-
-  try {
-    await sock.groupParticipantsUpdate(groupJid, [targetJid], 'remove');
-    await sendToChat(sock, groupJid, {
-      message: `🚫 Kicked user: @${targetJid.split('@')[0]}`,
-      mentions: [targetJid]
-    }, { quoted: msg });
-  } catch (err) {
-    await sendToChat(sock, groupJid, {
-      message: `❌ Failed to kick user: @${targetJid.split('@')[0]}`,
-      mentions: [targetJid]
-    }, { quoted: msg });
-  }
-}
-
 
 // Promote a user to admin (reply or mention)
 async function promoteUser(sock, msg, userId) {
@@ -588,8 +553,8 @@ module.exports = {
   lockGroupInfo,
   unlockGroupInfo,
   addUserToGroup,
-  kickUser,
   promoteUser,
   demoteUser,
-  handleGroupCommand
+  handleGroupCommand,
+  getGroupAdmins
 };

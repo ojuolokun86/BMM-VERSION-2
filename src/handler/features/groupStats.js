@@ -86,7 +86,22 @@ async function resetGroupStats(groupId) {
     groupStats[groupId] = {};
     await supabase.from('group_stats').delete().eq('group_id', groupId);
 }
-
+/**
+ * Returns an array of user IDs who have not sent a message in the last 30 days.
+ * Optionally pass an array of user IDs to exclude (e.g., admins/bot).
+ */
+function getInactiveMembers(groupId, excludeIds = []) {
+    if (!groupStats[groupId]) return [];
+    const now = Date.now();
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const threshold = now - THIRTY_DAYS_MS;
+    return Object.entries(groupStats[groupId])
+        .filter(([userId, stat]) =>
+            (!stat.lastMessageTime || stat.lastMessageTime < threshold) &&
+            !excludeIds.includes(userId)
+        )
+        .map(([userId]) => userId);
+}
 module.exports = {
     incrementGroupUserStat,
     getGroupStats,
@@ -95,5 +110,6 @@ module.exports = {
     loadGroupStatsFromDB,
     loadGroupDailyStatsFromDB,
     groupStats,
-    groupDailyStats
+    groupDailyStats,
+    getInactiveMembers
 };

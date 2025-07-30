@@ -24,16 +24,20 @@ const infoCommand = require('./command/info');
 const { handleSsCommand } = require('./command/ss');
 const { convertStickerToImage, convertStickerToGif } = require('./command/stToImage');
 const { help } = require('./command/help');
+const playCommand  = require('./command/playSong');  
+const { imagine } = require('./command/imagine');
+const songCommand = require('./command/song');
+const { kickCommand } = require('./command/kick');
+const { handleListInactiveCommand } = require('./command/groupStatsCommand');
 const {
   muteGroup,
   unmuteGroup,
   requestList,
   acceptAllRequests,
   rejectAllRequests,
-  addUserToGroup,
+  addUserToGroup, 
   lockGroupInfo,
   unlockGroupInfo,
-  kickUser,
   promoteUser,
   demoteUser,
   handleGroupCommand
@@ -65,7 +69,7 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
   const matchedOwner = getMatchedOwner(senderId, senderLid, botId, botLid);
   //console.log(`🔍 Matched owner: ${matchedOwner} for senderId: ${senderId}, senderLid: ${senderLid}`);
   //if (!textMsg.startsWith(prefix)) return;
-  //console.log(`🔍 Command starts with prefix: ${prefix}`);
+  //console.log(`🔍 Command starts with prefix: ${prefix} for ${botId}`);
  if (mode === 'private') {
   //console.log(`🔒 Bot in private mode. msg.fromMe: ${msg.key.fromMe}, matchedOwner: ${matchedOwner}`);
   if (!msg.key.fromMe && !matchedOwner) {
@@ -173,9 +177,6 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     case 'info':
       await infoCommand(sock, msg);
       break;
-    case 'setbot':
-      await setBotPrivacyCommand(sock, msg);
-      break;
     case 'mute':
       await muteGroup(sock, msg, senderId);
       break;
@@ -203,9 +204,6 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     case 'add':
       await addUserToGroup(sock, msg, phoneNumber);
       break;
-    case 'kick':
-      await kickUser(sock, msg, phoneNumber);
-      break;
     case 'promote':
       await promoteUser(sock, msg, phoneNumber);
       break;
@@ -229,6 +227,21 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     // case 'stgif':
     //   await convertStickerToGif(sock, msg, from);
     //   break;
+    case 'play':
+      await playCommand(sock, from, msg);
+      break;
+    case 'imagine':
+      await imagine(sock, msg, command, args, from);
+      break;
+    case 'song':
+      await songCommand(sock, from, msg);
+      break;
+    case 'kick':
+      await kickCommand(sock, msg, command, args, from);
+      break;
+    case 'listinactive':
+      await handleListInactiveCommand(sock, from);
+      break;
     default:
       await sendToChat(sock, from, {
       message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}help* for a list of commands.`

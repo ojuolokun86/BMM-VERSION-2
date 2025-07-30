@@ -39,8 +39,8 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         browser: ['Ubuntu', 'Opera', '125.0.6422.112'],
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        syncFullHistory: true,
-        shouldSyncHistoryMessage: true,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: false,
         generateHighQualityLinkPreview: true,
        getMessage: async (key) => {
         return (await store.loadMessage?.(key.remoteJid, key.id)) || undefined;
@@ -163,7 +163,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     sessions.set(sessionKey, { bmm, cleanup });
 
     bmm.ev.on('messages.upsert', async ({ messages, }) => {
-    //console.log(`Received messages for ${phoneNumber}:`, messages);
+   //console.log(`Received messages for ${phoneNumber}:`, messages);
     const msg = messages[0];
     if (!msg.message) return;
     await handleMessage({

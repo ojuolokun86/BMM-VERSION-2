@@ -1,5 +1,6 @@
 const sendToChat = require('../../utils/sendToChat');
 const globalStore = require('../../utils/globalStore');
+const { isBotOwner } = require('../../database/database');
 
 const menu = `
 *👤 Presence Settings*
@@ -17,6 +18,15 @@ async function presenceCommand(sock, msg, args) {
   const from = msg.key.remoteJid;
   const sentMenu = await sock.sendMessage(from, { text: menu }, { quoted: msg });
   const menuMsgId = sentMenu.key.id;
+  const botId = sock.user?.id?.split(':')[0]?.split('@')[0];
+  const botLid = sock.user?.lid?.split(':')[0]?.split('@')[0];
+  const senderId = msg.key.participant || msg.key.remoteJid;
+  const bot = botId && botLid;
+  if (!msg.key.fromMe && !bot) {
+    return await sendToChat(sock, from, {
+      message: '❌ Only the bot owner can configure presence settings.'
+    });
+  }
 
   const listener = async (m) => {
     const reply = m.messages?.[0];
