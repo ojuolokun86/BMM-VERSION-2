@@ -302,4 +302,104 @@
 
 **Summary:**  
 All features are modular, persistent, and owner-configurable.  
-Bot supports advanced automation, group management, and media handling for WhatsApp.
+Bot supports advanced automation, group management, and media handling for WhatsApp....
+
+# Development Notes
+
+## Project: BMM DEV V2 - WhatsApp Multi-Instance Bot
+
+---
+
+### Backend
+
+- **User Authentication**
+  - Registration and login endpoints using Express and Supabase.
+  - Passwords are hashed with bcrypt.
+  - Unique 6-digit `auth_id` generated for each user.
+  - Duplicate email registration is handled gracefully.
+
+- **Bot Deployment & Session Management**
+  - `/api/deploy-bot` endpoint accepts `authId`, `phoneNumber`, `country`, and `pairingMethod`.
+  - Registration and deployment logic separated into `deployment.js`.
+  - Registration flow emits QR code or pairing code to the frontend via **Socket.IO**.
+  - Each user session is isolated and managed for performance and low memory usage.
+  - Session directories: `/sessions/{authId}/{phoneNumber}` to support multiple bots per user.
+  - On disconnect:
+    - If reason is `badSession`, `loggedOut`, or `Failure`, the session is deleted and not restarted.
+    - For other reasons (e.g., `connectionClosed`, `restartRequired`), the bot is automatically restarted.
+  - Session persistence with SQLite (local) and Supabase (cloud).
+
+- **Socket.IO Integration**
+  - Dedicated `socket.js` handles Socket.IO server setup and user/bot-specific event emission.
+  - Live QR code, pairing code, and status updates are sent to the correct user/bot in real time.
+  - Frontend registers each bot session with `{authId, phoneNumber}` for targeted event delivery.
+
+---
+
+### Command System & Menu
+
+- **Modular Command Handlers**
+  - All commands are modularized in [/handler/command/](cci:7://file:///e:/Bot%20development/BOT%20V2/BMM%20DEV%20V2/src/handler/command:0:0-0:0).
+  - Dynamic menu and help system with reply-number mapping for WhatsApp-friendly UX.
+  - Commands are grouped: Core, Moderation, Group Controls, Fun & Media.
+  - Command aliases and subcommands supported (e.g. `.group stats`, `.group revoke`).
+
+- **Menu & Help**
+  - WhatsApp-friendly menu with emoji, reply numbers, and clear grouping.
+  - `.menu` and `.help` commands show all commands and their descriptions.
+  - One-to-one mapping between reply numbers and commands for quick access.
+
+- **Emoji Reactions**
+  - Centralized emoji mapping in [features/commandEmoji.js](cci:7://file:///e:/Bot%20development/BOT%20V2/BMM%20DEV%20V2/src/handler/features/commandEmoji.js:0:0-0:0) for all commands.
+  - Bot reacts with the correct emoji for known commands, and a random fun emoji for unknown/undefined commands.
+  - Emoji reactions are used both in menu/help and as feedback to user commands.
+
+- **Error Handling & UX**
+  - Consistent user feedback for all command actions (success, error, permission).
+  - Permission checks for admin/owner commands (e.g., group desc, pic, link, revoke).
+  - Fallback/random emoji reactions for unknown commands to enhance UX.
+
+---
+
+### Group & Stats Features
+
+- **Group Management**
+  - Group subcommands: `.group stats`, `.group revoke`, `.group desc`, `.group pic`, etc.
+  - Group stats command provides detailed 30-day activity, top members, and owner/group info.
+  - Group invite link revoke and refresh via `.group revoke`.
+  - Improved admin checks for sensitive group actions.
+
+---
+
+### Frontend & Management
+
+- **Web Dashboard**
+  - Shows live bot status, group stats, and command usage.
+  - Real-time updates for QR/pairing, session status, and group events via Socket.IO.
+  - User-friendly menu and help documentation accessible from WhatsApp and the dashboard.
+
+---
+
+### Deployment & Architecture
+
+- **Tech Stack**
+  - Node.js backend with modular handlers.
+  - SQLite for local, Supabase for cloud session/data.
+  - Socket.IO for real-time frontend/backend sync.
+  - Docker and Fly.io deployment ready.
+
+---
+
+### Miscellaneous
+
+- **Consistent Code Organization**
+  - All utility functions in `/utils/`.
+  - Database operations in `/database/`.
+  - Feature handlers in `/handler/features/`.
+
+- **Extensibility**
+  - Easy to add new commands, features, and integrations due to modular design.
+
+---
+
+_Last updated: 2025-07-30_

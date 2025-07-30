@@ -301,4 +301,4 @@ process.once('SIGUSR2', () => gracefulShutdown(true));
 process.on('exit', () => gracefulShutdown(false));
 
 
-module.exports = { startBmmBot, stopBmmBot, deleteBmmBot, getBotGroups };
+module.exports = { startBmmBot, stopBmmBot, deleteBmmBot, getBotGroups, store };

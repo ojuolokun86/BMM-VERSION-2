@@ -1,4 +1,5 @@
 const sendToChat = require('../../utils/sendToChat');
+const { handleGroupStatsCommand } = require('./groupStatsCommand')
 // 📌 Shared utility to extract target JID from reply or mention
 function extractTargetJid(msg) {
   const ctx = msg.message?.extendedTextMessage?.contextInfo;
@@ -445,7 +446,7 @@ async function demoteUser(sock, msg, userId) {
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { getUrlInfo } = require('@whiskeysockets/baileys');
 
-async function handleGroupCommand(sock, msg) {
+async function handleGroupCommand(sock, msg, userId) {
   const groupJid = msg.key.remoteJid;
   const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
@@ -464,6 +465,10 @@ async function handleGroupCommand(sock, msg) {
 
   switch (subcommand) {
    case 'link': {
+
+    if (!isAdmin) {
+      return sendToChat(sock, groupJid, { message: '❌ Only admins can change group description.' }, { quoted: msg });
+    }
             const code = await sock.groupInviteCode(groupJid);
             const url = `https://chat.whatsapp.com/${code}`; 
 
@@ -542,6 +547,22 @@ async function handleGroupCommand(sock, msg) {
       await sock.updateProfilePicture(groupJid, buffer);
       return sendToChat(sock, groupJid, { message: '✅ Group picture updated.' }, { quoted: msg });
     }
+    case 'stats': {
+      console.log('stats');
+      await handleGroupStatsCommand(sock, groupJid, userId);
+      break;
+    } 
+    case 'revoke': {
+      if (!isAdmin) {
+        return sendToChat(sock, groupJid, { message: '❌ Only group admins can revoke the invite link.' }, { quoted: msg });
+      }
+      try {
+        await sock.groupRevokeInvite(groupJid);
+        return sendToChat(sock, groupJid, { message: '✅ Group invite link has been revoked (new link generated).' }, { quoted: msg });
+      } catch (err) {
+        return sendToChat(sock, groupJid, { message: `❌ Failed to revoke link: ${err.message}` }, { quoted: msg });
+      }
+    }
 
     default:
       return sendToChat(sock, groupJid, {
@@ -549,7 +570,9 @@ async function handleGroupCommand(sock, msg) {
 .group link — Get group invite link
 .group info — See group details
 .group desc <text> — Set group description
-.group pic — Reply to image to set group picture`
+.group pic — Reply to image to set group picture
+.group stats — See group stats
+.group revoke — Revoke group invite link`,
       }, { quoted: msg });
   }
 }

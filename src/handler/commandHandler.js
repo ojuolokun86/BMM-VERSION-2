@@ -21,6 +21,9 @@ const setPrivacyCommand = require('./command/privacyCommand');
 const setDisappearingCommand = require('./command/disappearing');
 const setBotPrivacyCommand = require('./command/privacy2');
 const infoCommand = require('./command/info');
+const { handleSsCommand } = require('./command/ss');
+const { convertStickerToImage, convertStickerToGif } = require('./command/stToImage');
+const { help } = require('./command/help');
 const {
   muteGroup,
   unmuteGroup,
@@ -36,6 +39,7 @@ const {
   handleGroupCommand
 } = require('./command/groupCommand');
 const pollCommand = require('./command/poll');
+const stickerCommand = require('./command/stikcer');
 
 
 
@@ -95,9 +99,12 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
     case 'test':
       await sendToChat(sock, from, { message: 'Test command received!' });
       break;
+    case 'help':
+      await help(sock, from, msg);
+      break;  
     case 'menu':
       const { menu } = require('./command/menu');
-      await menu(sock, from, msg, prefix, botName, mode);
+      await menu(sock, from, msg, prefix, botName, mode, botId);
       break;
     case 'ping':
       await sendToChat(sock, from, { message: '🏓 Pong!' });
@@ -206,10 +213,24 @@ async function execute({ sock, msg, textMsg, phoneNumber }) {
       await demoteUser(sock, msg, phoneNumber);
       break;
     case 'group':
-      await handleGroupCommand(sock, msg);
+      await handleGroupCommand(sock, msg, botId);
       break;
-  default:
-    await sendToChat(sock, from, {
+    case 'sticker':
+      await stickerCommand(sock, msg);
+      break;
+    case 'ss':
+    case 'ssweb':
+    case 'screenshot':
+      await handleSsCommand(sock, from, msg, args[0]);
+      break;
+    case 'stimage':
+      await convertStickerToImage(sock, msg, from);
+      break;
+    // case 'stgif':
+    //   await convertStickerToGif(sock, msg, from);
+    //   break;
+    default:
+      await sendToChat(sock, from, {
       message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}help* for a list of commands.`
     });
     break;
