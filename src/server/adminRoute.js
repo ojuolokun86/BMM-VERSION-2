@@ -4,12 +4,12 @@ const supabase = require('../supabaseClient');
 const path = require('path');
 const { getSessionFromSupabase } = require('../database/supabaseSession.js'); // Adjust to your actual import
 const { startBmmBot } = require('../main/main.js'); // Or wherever your bot start logic is
-const { saveSessionToSqlite } = require('../database/sqliteAuthState.js'); // Adjust to your actual import
+const { writeSessionToSQLite } = require('../database/sqliteAuthState.js'); // Adjust to your actual import
 
 
 
 
-router.post('/admin/load-session', async (req, res) => {
+router.post('/load-session', async (req, res) => {
   const { authId, phoneNumber } = req.body;
   if (!authId || !phoneNumber) {
     return res.status(400).json({ success: false, message: 'Missing authId or phoneNumber' });
@@ -24,7 +24,7 @@ router.post('/admin/load-session', async (req, res) => {
     }
 
     // 2. Save to SQLite
-    await saveSessionToSqlite(sessionData);
+    await writeSessionToSQLite(authId, phoneNumber, sessionData);
 
     // 3. Start the bot/session using your core logic
     await startBmmBot(sessionData);
