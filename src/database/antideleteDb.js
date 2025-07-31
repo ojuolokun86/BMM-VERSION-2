@@ -1,5 +1,4 @@
 const { db } = require('./database');
-
 // Get global antidelete mode for a bot
 function getAntideleteMode(botId) {
   const row = db.prepare(`SELECT mode FROM antidelete_settings WHERE user_id = ?`).get(botId);

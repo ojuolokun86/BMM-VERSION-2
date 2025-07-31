@@ -2,7 +2,8 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const { initAuthCreds, makeCacheableSignalKeyStore, BufferJSON } = require('@whiskeysockets/baileys');
-const { saveSessionToSupabase, loadAllSessionsFromSupabase } = require('./supabaseSession');
+const { saveSessionToSupabase, loadAllSessionsFromSupabase, getSessionFromSupabase, } = require('./supabaseSession');
+const { syncUserSettingsFromSupabase, syncUserSettingsToSupabase } = require('./supabaseDb');
 
 const dbPath = path.join(__dirname, 'sessions.db');
 if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, '');
@@ -13,8 +14,10 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     auth_id TEXT NOT NULL,
     phone_number TEXT NOT NULL,
+    status TEXT NOT NULL,
     creds TEXT NOT NULL,
     keys TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (auth_id, phone_number)
   )
@@ -55,24 +58,34 @@ function loadSession(authId, phoneNumber) {
 
   return {
     creds: JSON.parse(row.creds, BufferJSON.reviver),
-    keys: decodeKeys(JSON.parse(row.keys))
+    keys: decodeKeys(JSON.parse(row.keys)),
+    status: row.status,
+
   };
 }
 
 // Save session to DB
-function saveSession(authId, phoneNumber, creds, keys) {
+function saveSession(authId, phoneNumber, status, creds, keys) {
   db.prepare(`
-    INSERT INTO sessions (auth_id, phone_number, creds, keys)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO sessions (auth_id, phone_number, status, creds, keys)
+    VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(auth_id, phone_number)
     DO UPDATE SET creds = excluded.creds, keys = excluded.keys, updated_at = CURRENT_TIMESTAMP
   `).run(
     authId,
     phoneNumber,
+    status,
     JSON.stringify(creds, BufferJSON.replacer),
     JSON.stringify(encodeKeys(keys))
   );
 }
+try{
+  db.prepare(`
+    ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
+  `).run();
+} catch (e) {
+  // Ignore if already exists
+}  
 
 // Main function used in Baileys
 async function useSQLiteAuthState(authId, phoneNumber) {
@@ -81,7 +94,10 @@ async function useSQLiteAuthState(authId, phoneNumber) {
   if (!session) {
     session = {
       creds: initAuthCreds(),
-      keys: {}
+      keys: {},
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
   }
 
@@ -104,7 +120,7 @@ async function useSQLiteAuthState(authId, phoneNumber) {
       keys[category][id] = data[category][id];
     }
   }
-  saveSession(authId, phoneNumber, creds, keys);
+  saveSession(authId, phoneNumber, 'active', creds, keys);
     }
   });
 
@@ -114,7 +130,7 @@ async function useSQLiteAuthState(authId, phoneNumber) {
       keys: keyStore
     },
     saveCreds: async () => {
-      saveSession(authId, phoneNumber, creds, keys);
+      saveSession(authId, phoneNumber, 'active', creds, keys);
     }
   };
 }
@@ -137,6 +153,7 @@ async function syncUserSession(authId, phoneNumber) {
     keys: session.keys,
     authId
   });
+  await syncUserSettingsToSupabase(authId);
   console.log(`✅ Synced session for ${phoneNumber} to Supabase. with keys ${Object.keys(session.keys).join(', ')}`);
 }
 
@@ -181,15 +198,39 @@ async function restoreAllSessionsFromSupabase() {
           keys[category][id] = JSON.parse(rawKeys[category][id], BufferJSON.reviver);
         }
       }
-      saveSession(session.authId, session.phoneNumber, creds, keys);
+      saveSession(session.authId, session.phoneNumber, session.status || 'active', creds, keys);
       restored++;
       console.log(`💾 Restored session for ${session.phoneNumber} to SQLite.`);
       console.log('🔍 Loaded app-state-sync-key IDs:', Object.keys(keys['app-state-sync-key'] || {}));
+
+      await syncUserSettingsFromSupabase(session.authId);
     } catch (err) {
       console.error(`❌ Failed to restore session for ${session.phoneNumber}:`, err.message);
     }
   }
   console.log(`✅ Restored ${restored} sessions from Supabase to SQLite.`);
 }
-
-module.exports = { useSQLiteAuthState, deleteSession, syncSQLiteToSupabase, deleteAllSessions, restoreAllSessionsFromSupabase, syncUserSession };
+async function writeSessionToSQLite(authId, phoneNumber, sessionData = null) {
+  try {
+    const session = sessionData || await getSessionFromSupabase(authId, phoneNumber);
+    if (!session) {
+      console.warn(`No session found for ${authId}:${phoneNumber}`);
+      return false;
+    }
+    const creds = JSON.parse(session.creds, BufferJSON.reviver);
+    const rawKeys = JSON.parse(session.keys);
+    const keys = {};
+    for (const category in rawKeys) {
+      keys[category] = {};
+      for (const id in rawKeys[category]) {
+        keys[category][id] = JSON.parse(rawKeys[category][id], BufferJSON.reviver);
+      }
+    }
+    saveSession(authId, phoneNumber, 'active', creds, keys);
+    return true;
+  } catch (err) {
+    console.error(`Failed to write session to SQLite for ${authId}:${phoneNumber}:`, err.message);
+    return false;
+  }
+}
+module.exports = { useSQLiteAuthState, deleteSession, syncSQLiteToSupabase, deleteAllSessions, restoreAllSessionsFromSupabase, syncUserSession, writeSessionToSQLite};

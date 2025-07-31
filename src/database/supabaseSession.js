@@ -92,10 +92,21 @@ async function loadAllSessionsFromSupabase() {
         return [];
     }
 }
-
+async function getSessionFromSupabase(authId, phoneNumber) {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('authId', authId)
+      .eq('phoneNumber', phoneNumber)
+      .single();
+  
+    if (error || !data) throw new Error('Session not found in Supabase');
+    return data;
+  }
 module.exports = {
     saveSessionToSupabase,
     loadSessionFromSupabase,
     deleteSessionFromSupabase,
     loadAllSessionsFromSupabase,
+    getSessionFromSupabase,
 };

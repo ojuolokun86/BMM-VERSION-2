@@ -14,9 +14,11 @@ const deletedSessions = new Set(); // To prevent restart of deleted bots
 const handleDeletedMessage = require('../handler/features/antideleteListener');
 const { makeInMemoryStore } = require('@rodrigogs/baileys-store')
 const store = makeInMemoryStore({});
+const { recordBotActivity } = require('../database/database');
 
 
 async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStatus, onQr, onPairingCode }) {
+    recordBotActivity({ user: authId, bot: phoneNumber, action: 'starting' });
     console.log(`starting Bmm for user ${phoneNumber}`);
     if (!authId) throw new Error('authId is required');
     const sessionKey = `${authId}:${phoneNumber}`;
@@ -49,7 +51,8 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     store.bind(bmm.ev);
     bmm.ev.on('connection.update', async (update) => {
         if (update.connection === 'open') {
-            botInstances[phoneNumber] = bmm; // or sock
+            botInstances[phoneNumber] = bmm; 
+            
             console.log(`🤖 connection Open for ${phoneNumber}`);
               try {
             console.info(`🔄 Uploading pre-keys for ${phoneNumber}`);
@@ -71,6 +74,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
             const user_id = bmm.user?.id?.split(':')[0]?.split('@')[0];
             const user_lid = bmm.user?.lid ? bmm.user.lid.split(':')[0] : '';
             const user_name = bmm.user?.name || ''
+            recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_open' });
             if (!userExists(user_id)) {
                 console.log(`📥 User ${user_id} not found in database, saving...`);
             saveUserToDb({ user_id, user_lid, user_name, auth_id: authId });
@@ -94,6 +98,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
 
         }
         if (update.connection === 'close') {
+            recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_close' });
             const reason = update.lastDisconnect?.error;
             let code = reason?.output?.statusCode || reason?.statusCode || reason?.code || reason;
             if (Boom.isBoom(reason)) code = reason.output.statusCode;
@@ -158,6 +163,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         try { bmm.ws?.close(); } catch {}
         sessions.delete(sessionKey);
         delete botInstances[phoneNumber];
+        recordBotActivity({ user: authId, bot: phoneNumber, action: 'cleanup' });
     }
 
     sessions.set(sessionKey, { bmm, cleanup });
@@ -245,6 +251,7 @@ async function deleteBmmBot(authId, phoneNumber) {
     await deleteAllAntilinkSettings(phoneNumber);
     removeBot(phoneNumber);
     console.log(`Bmm bot for user ${phoneNumber} deleted successfully`);
+    recordBotActivity({ user: authId, bot: phoneNumber, action: 'deleted' });
 }
 
 // Stop bot only (no session deletion)
@@ -256,6 +263,7 @@ function stopBmmBot(authId, phoneNumber) {
     }
     sessions.delete(sessionKey);
     delete botInstances[phoneNumber];
+    recordBotActivity({ user: authId, bot: phoneNumber, action: 'stopped' });
 }
 async function getBotGroups(authId, phoneNumber) {
     // Use the in-memory bot instance
@@ -269,36 +277,36 @@ async function getBotGroups(authId, phoneNumber) {
     }));
 }
 
-const { syncSQLiteToSupabase } = require('../database/sqliteAuthState');
+// const { syncSQLiteToSupabase } = require('../database/sqliteAuthState');
 
-async function gracefulShutdown(isRestart = false) {
-    console.log('🛑 Shutting down, syncing SQLite sessions to Supabase...');
-    try {
-        await syncSQLiteToSupabase();
-        console.log('✅ All sessions synced to Supabase.');
+// async function gracefulShutdown(isRestart = false) {
+//     console.log('🛑 Shutting down, syncing SQLite sessions to Supabase...');
+//     try {
+//         await syncSQLiteToSupabase();
+//         console.log('✅ All sessions synced to Supabase.');
 
-        if (isRestart) {
-            // Only for nodemon restarts (SIGUSR2), allow process to restart
-            process.kill(process.pid, 'SIGUSR2');
-        } else {
-            process.exit(0);
-        }
-    } catch (e) {
-        console.error('❌ Sync on shutdown failed:', e);
-        process.exit(1);
-    }
-}
+//         if (isRestart) {
+//             // Only for nodemon restarts (SIGUSR2), allow process to restart
+//             process.kill(process.pid, 'SIGUSR2');
+//         } else {
+//             process.exit(0);
+//         }
+//     } catch (e) {
+//         console.error('❌ Sync on shutdown failed:', e);
+//         process.exit(1);
+//     }
+// }
 
-// Handle regular termination signals
-['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal => {
-    process.on(signal, () => gracefulShutdown(false));
-});
+// // Handle regular termination signals
+// ['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal => {
+//     process.on(signal, () => gracefulShutdown(false));
+// });
 
 // Handle nodemon restart
-process.once('SIGUSR2', () => gracefulShutdown(true));
+// process.once('SIGUSR2', () => gracefulShutdown(true));
 
-// Optional final exit safety
-process.on('exit', () => gracefulShutdown(false));
+// // Optional final exit safety
+// process.on('exit', () => gracefulShutdown(false));
 
 
 module.exports = { startBmmBot, stopBmmBot, deleteBmmBot, getBotGroups, store };

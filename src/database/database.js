@@ -67,6 +67,20 @@ db.prepare(`
   )
 `).run();
 
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS bot_activity (
+    user TEXT,
+    bot TEXT,
+    action TEXT,
+    time INTEGER
+  )
+`).run();
+
+function recordBotActivity({ user, bot, action }) {
+  db.prepare(
+      'INSERT INTO bot_activity (user, bot, action, time) VALUES (?, ?, ?, ?)'
+  ).run(user, bot, action, Date.now());
+}
 
 // In database.js or migration setup
 try {
@@ -173,4 +187,5 @@ module.exports = {
   setUserStatusViewMode,
    getReactToCommand,
   setReactToCommand,
+  recordBotActivity,
 };

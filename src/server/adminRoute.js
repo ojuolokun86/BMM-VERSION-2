@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const path = require('path');
+
 
 // GET /api/admin/users-info
 router.get('/users-info', async (req, res) => {
@@ -74,5 +76,101 @@ router.get('/bots/:authId', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+router.get('/bots', (req, res) => {
+    try {
+      const dbPath = path.join(__dirname, '../database/sessions.db');
+      const db = new Database(dbPath);
+  
+      // Fetch all bots from sessions table (adjust columns as needed)
+      const bots = db.prepare('SELECT session_id, auth_id AS user_auth_id, phone_number, status, created_at FROM sessions').all();
+  
+      // You can format/rename fields here if needed
+      const formattedBots = bots.map(bot => ({
+        id: bot.session_id,
+        user_auth_id: bot.user_auth_id,
+        status: bot.status || 'unknown',
+        phone_number: bot.phone_number,
+        created_at: bot.created_at
+      }));
+  
+      res.json({ success: true, bots: formattedBots });
+    } catch (err) {
+      console.error('Error listing bots:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
 
+  // In adminRoute.js
+router.get('/load', (req, res) => {
+    try {
+        const Database = require('better-sqlite3');
+      const dbPath = path.join(__dirname, '../database/sessions.db');
+      const db = new Database(dbPath);
+      // Count active sessions (or whatever status means "active" for you)
+      const { count } = db.prepare("SELECT COUNT(*) as count FROM sessions WHERE status = 'active'").get();
+      //console.log(count);
+      res.json({ userCount: count });
+    } catch (err) {
+        console.error('Error listing bots:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+ 
+  router.delete('/user/:authId', async (req, res) => {
+    const Database = require('better-sqlite3');
+    const path = require('path');
+    const dbPath = path.join(__dirname, '../database/sessions.db');
+    const db = new Database(dbPath);
+  
+    const { authId } = req.params;
+    try {
+      // 1. Find user row by auth_id
+      const userRow = db.prepare('SELECT user_id FROM users WHERE auth_id = ?').get(authId);
+      if (!userRow) {
+        return res.status(404).json({ success: false, message: 'User not found.' });
+      }
+      const userId = userRow.user_id;
+  
+      // 2. Delete all sessions (and stop bots)
+      const sessionRows = db.prepare('SELECT phone_number FROM sessions WHERE auth_id = ?').all(authId);
+      const { deleteBmmBot } = require('../main/main');
+      for (const { phone_number } of sessionRows) {
+        deleteBmmBot(authId, phone_number);
+        db.prepare('DELETE FROM sessions WHERE auth_id = ? AND phone_number = ?').run(authId, phone_number);
+        // Also delete all per-bot settings for this phone_number
+        db.prepare('DELETE FROM antilink_settings WHERE bot_id = ?').run(phone_number);
+        db.prepare('DELETE FROM antilink_warns WHERE bot_id = ?').run(phone_number);
+        db.prepare('DELETE FROM welcome_settings WHERE bot_id = ?').run(phone_number);
+        db.prepare('DELETE FROM antidelete_settings WHERE user_id = ?').run(phone_number);
+        db.prepare('DELETE FROM antidelete_excludes WHERE user_id = ?').run(phone_number);
+      }
+  
+      // 3. Delete user from users table
+      db.prepare('DELETE FROM users WHERE user_id = ?').run(userId);
+        
+      res.json({ success: true, message: `User ${authId} and all related data deleted.` });
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  router.get('/bot-activity', (req, res) => {
+    try {
+      const Database = require('better-sqlite3');
+      const path = require('path');
+        const dbPath = path.join(__dirname, '../database/sessions.db');
+        const db = new Database(dbPath);
+        const rows = db.prepare(
+            'SELECT user, bot, action, time FROM bot_activity ORDER BY time DESC LIMIT 10'
+        ).all();
+        res.json({ activity: rows });
+        //console.log(rows);
+    } catch (err) {
+        console.error('Error fetching bot activity:', err);
+        console.log(err);
+        res.status(500).json({ error: err.message });
+    }
+});
 module.exports = router;

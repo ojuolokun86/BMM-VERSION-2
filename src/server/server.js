@@ -4,6 +4,24 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const supabase = require('../supabaseClient'); // Adjust path as needed
 const { initializeSocket } = require('./socket');
+const { getSessionFromSupabase } = require('../database/supabaseSession');
+const { writeSessionToSQLite } = require('../database/sqliteAuthState');
+const { startBmmBot } = require('../main/main'); // adjust path as needed
+
+async function loadSessionFromSupabaseAndStart(authId, phoneNumber) {
+    // 1. Get session from Supabase
+    const sessionData = await getSessionFromSupabase(authId, phoneNumber);
+    if (!sessionData) {
+      console.warn(`No session found for ${authId}:${phoneNumber}`);
+      return false;
+    }
+  
+    // 2. Write session to SQLite
+    await writeSessionToSQLite(authId, phoneNumber, sessionData);
+  
+    // 3. Start the BMM bot for this user
+    await startBmmBot(authId, phoneNumber);
+  }
 
 function generateAuthId() {
   return Math.floor(100000 + Math.random() * 900000);
@@ -33,6 +51,21 @@ function createServer() {
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  app.post('/api/load-session', async (req, res) => {
+    const { authId, phoneNumber } = req.body;
+    if (!authId || !phoneNumber) {
+      return res.status(400).json({ success: false, message: 'authId and phoneNumber required' });
+    }
+    try {
+      await loadSessionFromSupabaseAndStart(authId, phoneNumber);
+      res.json({ success: true, message: `Session loaded and bot started for ${authId}:${phoneNumber}` });
+      console.log(`[API] Loaded and started bot for session ${authId}:${phoneNumber}`);
+    } catch (err) {
+      console.error(`[API] Failed to load/start session ${authId}:${phoneNumber}:`, err.message);
+      res.status(500).json({ success: false, message: err.message });
+    }
   });
 
   app.post('/api/login', async (req, res) => {
@@ -164,24 +197,36 @@ function createServer() {
   });
 }
 
+const { db } = require('../database/database');
+const { syncUserSettingsToSupabase } = require('../database/supabaseDb');
 const { syncSQLiteToSupabase } = require('../database/sqliteAuthState');
 
-// Graceful shutdown for all signals
-function gracefulShutdown() {
-    console.log('🛑 Shutting down, syncing SQLite sessions to Supabase...');
-    syncSQLiteToSupabase()
-        .then(() => {
-            console.log('✅ All sessions synced to Supabase. Exiting.');
-            process.exit(0);
-        })
-        .catch((e) => {
-            console.error('❌ Sync on shutdown failed:', e);
-            process.exit(1);
-        });
+let isShuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  try {
+    console.log(`🛑 Received ${signal}, syncing sessions and settings to Supabase before exit...`);
+    // 1. Sync all sessions
+    await syncSQLiteToSupabase();
+    // 2. Sync all user settings
+    await Promise.all(
+      db.prepare('SELECT DISTINCT auth_id FROM users').all().map(r =>
+        syncUserSettingsToSupabase(r.auth_id)
+      )
+    );
+    console.log('✅ Shutdown sync complete. Exiting.');
+    setTimeout(() => process.exit(0), 300); // Let logs flush
+  } catch (err) {
+    console.error('❌ Error during shutdown sync:', err);
+    setTimeout(() => process.exit(1), 300);
+  }
 }
 
-['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal => {
-    process.on(signal, gracefulShutdown);
+// Catch all common shutdown signals
+['SIGINT', 'SIGTERM', 'SIGQUIT', 'SIGHUP'].forEach(sig => {
+  process.on(sig, () => gracefulShutdown(sig));
 });
-process.on('exit', gracefulShutdown);
+
+// process.on('exit', gracefulShutdown);
 module.exports = { createServer };

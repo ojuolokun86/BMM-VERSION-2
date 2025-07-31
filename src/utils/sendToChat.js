@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getContextInfo, getForwardedContext } = require('../utils/contextInfo');
+const { recordBotActivity } = require('../database/database');
 
 // Load a thumbnail image for rich preview (optional)
 const imagePath = path.join(__dirname, '../assets/BMM2.jpg');
