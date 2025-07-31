@@ -2,6 +2,39 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
 const path = require('path');
+const { getSessionFromSupabase } = require('../database/supabaseSession.js'); // Adjust to your actual import
+const { startBmmBot } = require('../main/main.js'); // Or wherever your bot start logic is
+const { saveSessionToSqlite } = require('../database/sqliteAuthState.js'); // Adjust to your actual import
+
+
+
+
+router.post('/admin/load-session', async (req, res) => {
+  const { authId, phoneNumber } = req.body;
+  if (!authId || !phoneNumber) {
+    return res.status(400).json({ success: false, message: 'Missing authId or phoneNumber' });
+  }
+
+  try {
+    // 1. Fetch session data from Supabase
+    const sessionData = await getSessionFromSupabase(authId, phoneNumber);
+    if (!sessionData) {
+      console.log(`Session not found for authId: ${authId}, phoneNumber: ${phoneNumber}`);
+      return res.status(404).json({ success: false, message: 'Session not found in Supabase' });
+    }
+
+    // 2. Save to SQLite
+    await saveSessionToSqlite(sessionData);
+
+    // 3. Start the bot/session using your core logic
+    await startBmmBot(sessionData);
+
+    res.json({ success: true, message: 'Session loaded, saved to SQLite, and started.' });
+  } catch (err) {
+    console.error('❌ Error loading session from Supabase:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 
 // GET /api/admin/users-info
@@ -95,7 +128,7 @@ router.get('/bots', (req, res) => {
   
       res.json({ success: true, bots: formattedBots });
     } catch (err) {
-      console.error('Error listing bots:', err);
+      console.error('❌ Error listing bots:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
@@ -111,7 +144,7 @@ router.get('/load', (req, res) => {
       //console.log(count);
       res.json({ userCount: count });
     } catch (err) {
-        console.error('Error listing bots:', err);
+        console.error('❌ Error listing bots:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
@@ -151,7 +184,7 @@ router.get('/load', (req, res) => {
         
       res.json({ success: true, message: `User ${authId} and all related data deleted.` });
     } catch (err) {
-      console.error('Error deleting user:', err);
+      console.error('❌ Error deleting user:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
@@ -168,7 +201,7 @@ router.get('/load', (req, res) => {
         res.json({ activity: rows });
         //console.log(rows);
     } catch (err) {
-        console.error('Error fetching bot activity:', err);
+        console.error('❌ Error fetching bot activity:', err);
         console.log(err);
         res.status(500).json({ error: err.message });
     }
